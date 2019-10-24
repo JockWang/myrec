@@ -34,7 +34,7 @@ def reaData(dataset='zhihu', mode='train'):
         with open('data/as_feature.pkl', 'rb') as source:
             data['as'] = pkl.load(source)
         with open('data/mb_features.pkl', 'rb') as source:
-            data['mf'] = pkl.load(source)
+            data['mf'] = normal(pkl.load(source))
         print('Loaded dataset:', dataset, mode)
         return Dataset(data)
 
