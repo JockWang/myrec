@@ -2,35 +2,41 @@ import torch
 import torch.nn as nn
 from model import Model
 import torch.optim as optim
-from model_utils import seed_torch, reaData
+from model_utils import seed_torch, reaData, gencheckpoint, logwriter
 from torch.utils.data import DataLoader
 import warnings
 import datetime
+import os
 warnings.filterwarnings('ignore')
 seed_torch(0)
 
 with open('output/info.txt', 'w') as source:
     source.write('Training:'+datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')+
                  '\n===================================================\n')
-
+resume = False
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # loading data
 train = DataLoader(dataset=reaData('zhihu', 'train'), batch_size=8, shuffle=True)
-# test = DataLoader(dataset=reaData('zhihu', 'test'), batch_size=1, shuffle=True)
-hidden_units = [512, 64, 2]
+# test = DataLoader(dataset=reaData('zhihu', 'test'), batch_size=8, shuffle=True)
+hidden_units = [2048, 1024, 512, 126, 32, 8, 1]
 mb_units = [2048, 512, 100]
 # loading model
 model = Model(qs_input_dim=320, as_input_dim=142, mb_dim=4980, hidden_units=hidden_units,
               mb_units=mb_units, device=device).float()
-# qsMDL = TransMdl(n_layers=6, n_head=2, seq_len=9, d_model=142, d_inner=512, fc1=142,
-#                 d_out=2, dropout=0.1, d_ivt=320, d_mb=4980)
 
 criterion = nn.BCEWithLogitsLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.0001)
+epochs = 1000
+initepoch = 0
+if os.path.exists('output/point.ptm'):
+    print('Resume from checkpoint...')
+    logwriter('Resume from checkpoint...')
+    checkpoint = torch.load('output/point.ptm')
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_stat_dict'])
+    initepoch = checkpoint['epoch']+1
 
-epochs = 100
-
-for epoch in range(epochs):
+for epoch in range(initepoch, epochs):
 
     running_loss = 0
     i = 0
@@ -50,13 +56,6 @@ for epoch in range(epochs):
         if i % 100 == 99:
             line = 'Epoch:%d Iter:%d loss:%.5f Total:%.5f' % (epoch + 1, i + 1, running_loss / 100, running_loss)
             print(line)
-            with open('output/info.txt', 'a') as source:
-                source.write(line+'\n')
-            # print(torch.sigmoid(out))
-            # print(label)
+            logwriter(line)
             running_loss = 0
-        if i % 1100 == 1099:
-            print('-----Save model-----')
-            torch.save(model, 'output/my_model.ptm')
-
-    print('Finish.')
+    gencheckpoint(epoch, model, optimizer)

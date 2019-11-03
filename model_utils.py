@@ -2,6 +2,7 @@ import numpy as np
 import pickle as pkl
 from torch.utils.data import DataLoader, Dataset
 import random
+import datetime
 import os
 import torch
 
@@ -15,10 +16,7 @@ def normal(put):
         min_ = mat[:, i].min()
         max_ = mat[:, i].max()
         mat[:, i] = (mat[:, i] - min_) / (max_ - min_)
-    #     print(mat)
-    #     print(mat.shape)
     mat[np.isnan(mat)] = 0
-    #     print(mat)
     for i in range(mat.shape[0]):
         put[index[i]] = mat[i, :].tolist()
     return put
@@ -36,10 +34,24 @@ def reaData(dataset='zhihu', mode='train'):
         with open('data/mb_features.pkl', 'rb') as source:
             data['mf'] = normal(pkl.load(source))
         print('Loaded dataset:', dataset, mode)
+        logwriter('Loaded dataset:'+dataset+' '+mode)
         return Dataset(data)
 
+def gencheckpoint(epoch, model, optimizer):
+    checkpoint = {
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_stat_dict': optimizer.state_dict(),
+    }
+    if not os.path.isdir('output'):
+        os.makedirs('output')
+    torch.save(checkpoint, 'output/point.ptm')
+    print('Create Checkpoint.')
+    logwriter(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')+' Create Checkpoint.')
 
-#         return data
+def logwriter(info):
+    with open('output/info.txt', 'a') as source:
+        source.write(info+'\n')
 
 class Dataset(Dataset):
     def __init__(self, dataset, dataname='zhihu'):
@@ -66,9 +78,7 @@ class Dataset(Dataset):
             for a in as_list[-9:]:
                 as_matrix.append(ans[a])
             return (np.array(qs_matrix), np.array(as_matrix), np.array(qes[invate]), np.array(mbf[member])), np.array(
-                target)
-
-    #             return (np.array(qs_matrix), np.array(as_matrix), np.array(qes[invate])), label
+                [label])
 
     def __len__(self):
         return len(self.data['mb'])
